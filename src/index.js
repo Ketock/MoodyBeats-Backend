@@ -6,6 +6,9 @@ import { R2Client } from './r2-client.js';
 // Load environment variables
 const PORT = process.env.PORT || 3000;
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS 
+  ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+  : [];
 const R2_CONFIG = {
   accountId: process.env.R2_ACCOUNT_ID,
   accessKeyId: process.env.R2_ACCESS_KEY_ID,
@@ -50,13 +53,24 @@ const upload = multer({
 // Middleware
 app.use(express.json());
 
-// CORS headers
-app.use((_req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
+// CORS configuration - web domains and mobile app
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Allow requests from configured web origins
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  } 
+  // Allow mobile apps (they don't send Origin header)
+  else if (!origin) {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  
   res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type');
   
-  if (_req.method === 'OPTIONS') {
+  if (req.method === 'OPTIONS') {
     return res.sendStatus(200);
   }
   
